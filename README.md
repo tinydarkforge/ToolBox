@@ -24,7 +24,7 @@
 
 > **ToolBox** is a tiny guided bootstrap for a fresh macOS dev machine. Installs **iTerm2, VS Code, Oh My Zsh, Homebrew**, and a curated set of CLI / language / cloud / DB / productivity tools. One script. One interactive menu. One summary report. No account. No telemetry. Local only.
 
-> **Status:** v1 — two flavors shipped (clean + retro DOS).
+> **Status:** v1 — single retro DOS-vibe installer with arrow-key menu, 8-bit sound feedback, and TinyDarkForge Forge integration (SecGate + Intake).
 
 ---
 
@@ -64,53 +64,83 @@ ToolBox does not ship its own package manager. Every install delegates to `brew`
 | **API / HTTP**        | httpie, Postman, Insomnia                                                      |
 | **Productivity**      | Rectangle, Raycast, 1Password, 1Password CLI, Slack, Notion                    |
 | **Editors / extras**  | neovim, Cursor                                                                 |
+| **TDF Forge**         | [SecGate](https://github.com/tinydarkforge/SecGate) (`@tinydarkforge/secgate`), [Intake](https://github.com/tinydarkforge/Intake) (curl-pipe installer) |
 
 Missing prerequisites (Xcode CLT, Homebrew) are **installed automatically** during preflight. Single-tool failures don't abort the run; they're collected and listed in the final summary.
 
----
-
-## ░▒▓█ Two flavors
-
-| Script                     | Vibe                                                                |
-|----------------------------|---------------------------------------------------------------------|
-| `install-devtools.sh`      | Clean. Modern terminal. Colored bullets, simple sections.           |
-| `install-devtools-dos.sh`  | Retro 1987 DOS. ASCII banner, `C:\TDF\DEVTOOLS>` prompt, beeps, box-drawing menus. Same install logic. |
-
-Both scripts share install logic — pick whichever vibe fits the day.
+> **Note on TDF Forge:** SecGate requires `npm` (load the **Languages** module first if starting fresh). Intake's installer pulls Ollama + a ~5GB AI model and prompts you to log in to GitHub — the script asks before running it.
 
 ---
 
 ## ░▒▓█ Menu
 
+Arrow-key driven (↑/↓ + Enter). Number keys `1`-`5` work as direct shortcuts. **Q** or **Ctrl+C** exits.
+
 ```
 ╔══════════════════════════════════════════════════════════════════╗
-║                    ::  M A I N   M E N U  ::                    ║
+║              ::  M A I N   M E N U  —  ↑↓ ENTER  ::             ║
 ╠══════════════════════════════════════════════════════════════════╣
-║  [1]  FULL INSTALL         (everything, recommended for new HD) ║
-║  [2]  MINIMAL INSTALL       (iTerm2 + VS Code + Oh My Zsh)      ║
-║  [3]  CUSTOM INSTALL        (pick modules one by one)           ║
-║  [4]  ABORT                 (exit to DOS)                       ║
+║ ▶ [1]  FULL INSTALL          (everything, recommended for new HD)║
+║   [2]  MINIMAL INSTALL       (iTerm2 + VS Code + Oh My Zsh)      ║
+║   [3]  CUSTOM INSTALL        (pick modules one by one)           ║
+║   [4]  SECGATE               (npm i -g @tinydarkforge/secgate)   ║
+║   [5]  INTAKE                (Ollama + intake + ~5GB AI model)   ║
 ╚══════════════════════════════════════════════════════════════════╝
+   Use ↑/↓ to move, ENTER to select, 1-5 for direct, Q to quit, Ctrl+C to abort.
 ```
 
 | Choice | Behavior                                                           |
 |:------:|--------------------------------------------------------------------|
-| `1`    | Install everything from every category                             |
+| `1`    | Install everything (every category + SecGate + Intake)             |
 | `2`    | Install required only (iTerm2 + VS Code + Oh My Zsh)               |
 | `3`    | Install required, then prompt y/N for each remaining category      |
-| `4`    | Quit                                                               |
+| `4`    | Install **SecGate** only (`@tinydarkforge/secgate` via npm)        |
+| `5`    | Install **Intake** only (Ollama + binary + AI model, ~5GB)         |
+| `Q` / `Ctrl+C` | Exit                                                       |
+
+### Arrow nav vs numbered menu
+
+The numbered menu is the default and works on any macOS out of the box. Arrow nav requires bash 4+. macOS ships bash 3.2, so on a fresh machine you'll see the numbered prompt — that's expected and fine.
+
+If you happen to already have a newer bash at `/opt/homebrew/bin/bash` or `/usr/local/bin/bash` (Apple Silicon / Intel), the script detects it and re-execs itself under that bash so arrow nav lights up. Passive — no install, no PATH changes, no surprises.
+
+Non-TTY stdin (CI, piped input) also routes to the numbered fallback.
+
+---
+
+## ░▒▓█ Sounds
+
+8-bit-ish sound feedback at 50% volume. macOS only (uses `afplay`).
+
+| Event       | Default sound (system)                       | Override        |
+|-------------|----------------------------------------------|-----------------|
+| Boot        | `Hero.aiff`                                  | `assets/sounds/boot.wav` |
+| Menu nav    | `Tink.aiff`                                  | `assets/sounds/nav.wav` |
+| Select      | `Pop.aiff`                                   | `assets/sounds/select.wav` |
+| Tool OK     | `Morse.aiff`                                 | `assets/sounds/ok.wav` |
+| Tool FAIL   | `Funk.aiff`                                  | `assets/sounds/fail.wav` |
+| All done    | `Glass.aiff`                                 | `assets/sounds/done.wav` |
+
+Drop real chiptune `.wav` files in `assets/sounds/` (matching the names above) to override.
+
+```bash
+TDF_SOUND=0    bash install-devtools.sh   # disable sounds
+TDF_SOUND_VOL=0.25 bash install-devtools.sh   # quieter (default 0.5)
+TDF_SOUND_VOL=1.0  bash install-devtools.sh   # full volume
+```
+
+See `assets/sounds/README.md` for sources of free 8-bit WAVs.
 
 ---
 
 ## ░▒▓█ Install
 
-### One-shot
+### Clone
 
 ```bash
 git clone https://github.com/tinydarkforge/ToolBox.git
 cd ToolBox
-bash install-devtools.sh           # clean
-bash install-devtools-dos.sh       # retro DOS
+bash install-devtools.sh
 ```
 
 ### Curl-pipe (after publishing)
