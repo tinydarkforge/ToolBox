@@ -31,7 +31,13 @@
 ## ░▒▓█ TL;DR
 
 ```bash
-bash install-devtools.sh
+bash <(curl -fsSL https://raw.githubusercontent.com/tinydarkforge/ToolBox/main/install-devtools.sh)
+```
+
+Or clone first:
+
+```bash
+git clone https://github.com/tinydarkforge/ToolBox.git && cd ToolBox && bash install-devtools.sh
 ```
 
 Pick from the menu. Re-runs are safe — already-installed tools are skipped.
@@ -135,7 +141,24 @@ See `assets/sounds/README.md` for sources of free 8-bit WAVs.
 
 ## ░▒▓█ Install
 
-### Clone
+Three ways to get it. Pick one. All three end with `bash install-devtools.sh`.
+
+### 1. Curl-pipe (no clone, one-liner)
+
+Fastest path on a fresh machine. Downloads + runs the script in one shot. Nothing left on disk afterward.
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/tinydarkforge/ToolBox/main/install-devtools.sh)
+```
+
+> Audit it first if you don't trust random pipe-to-bash:
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/tinydarkforge/ToolBox/main/install-devtools.sh | less
+> ```
+
+### 2. Clone with git
+
+Best if you want to re-run later, tweak, or pin a commit.
 
 ```bash
 git clone https://github.com/tinydarkforge/ToolBox.git
@@ -143,11 +166,31 @@ cd ToolBox
 bash install-devtools.sh
 ```
 
-### Curl-pipe (after publishing)
+Update later:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/tinydarkforge/ToolBox/main/install-devtools.sh)
+cd ToolBox && git pull && bash install-devtools.sh
 ```
+
+### 3. Download zip (no git required)
+
+For a brand-new Mac without `git` yet (Xcode CLT not installed). The script auto-installs Xcode CLT on first run anyway, but the zip path lets you start before that.
+
+```bash
+curl -fsSL -o ToolBox.zip https://github.com/tinydarkforge/ToolBox/archive/refs/heads/main.zip
+unzip ToolBox.zip
+cd ToolBox-main
+bash install-devtools.sh
+```
+
+Or grab the zip from the **Code → Download ZIP** button on [the GitHub repo](https://github.com/tinydarkforge/ToolBox).
+
+### Requirements
+
+- macOS (Apple Silicon or Intel)
+- Internet connection
+- Admin password (for Xcode CLT + Homebrew install during preflight)
+- ~2-5 GB free disk (more if you pick Intake — pulls a ~5 GB AI model)
 
 ---
 
