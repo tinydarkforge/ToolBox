@@ -143,13 +143,27 @@ preflight() {
   ok "MS-DARWIN $(sw_vers -productVersion) DETECTED"
 
   if ! xcode-select -p >/dev/null 2>&1; then
-    fail "XCODE.SYS MISSING"
-    work "Loading XCODE.SYS"
-    xcode-select --install || true
-    fail_w "XCODE.SYS — RUN AGAIN AFTER INSTALL FINISHES"
-    exit 1
+    work "Loading CLT.SYS (accept the GUI dialog when it appears)"
+    xcode-select --install >/dev/null 2>&1 || true
+    printf "\n  ${YELLOW}!${RESET} Waiting for Command Line Tools install to finish...\n"
+    printf "  ${DIM}    (this can take 5-15 min depending on connection)${RESET}\n"
+    local _waited=0
+    while ! xcode-select -p >/dev/null 2>&1; do
+      sleep 5
+      _waited=$((_waited + 5))
+      if (( _waited % 60 == 0 )); then
+        printf "  ${DIM}    ...still waiting (%dm elapsed)${RESET}\n" "$((_waited / 60))"
+      fi
+      if (( _waited >= 1800 )); then
+        fail_w "CLT.SYS — timed out after 30 min. Install manually then re-run."
+        beep
+        exit 1
+      fi
+    done
+    done_w "CLT.SYS LOADED"
+  else
+    ok "CLT.SYS LOADED"
   fi
-  ok "XCODE.SYS LOADED"
 
   if ! command -v brew >/dev/null 2>&1; then
     work "Bootstrapping HOMEBREW.SYS"
