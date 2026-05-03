@@ -132,14 +132,23 @@ section() {
 }
 
 # ─── preflight ────────────────────────────────────────────────────
-preflight() {
-  section "PHASE 1 :: SYSTEM CHECK"
-
+# Cheap up-front check: just confirm we're on macOS. No GUI prompts.
+check_darwin() {
   if [[ "$(uname)" != "Darwin" ]]; then
+    section "PHASE 1 :: SYSTEM CHECK"
     fail "MS-DARWIN NOT DETECTED. ABORT, RETRY, FAIL?"
     beep
     exit 1
   fi
+}
+
+# Heavy preflight: CLT + Homebrew. Runs only when an install path actually
+# needs brew. Idempotent — guarded by BREW_READY flag.
+BREW_READY=0
+ensure_brew() {
+  (( BREW_READY == 1 )) && return 0
+
+  section "PHASE 1 :: SYSTEM CHECK"
   ok "MS-DARWIN $(sw_vers -productVersion) DETECTED"
 
   if ! xcode-select -p >/dev/null 2>&1; then
@@ -183,6 +192,8 @@ preflight() {
   work "Refreshing package index"
   brew update >/dev/null 2>&1 || true
   done_w "PACKAGE INDEX SYNCED"
+
+  BREW_READY=1
 }
 
 # ─── install primitives ───────────────────────────────────────────
@@ -268,6 +279,7 @@ install_rustup() {
 
 # ─── category installers ──────────────────────────────────────────
 install_required() {
+  ensure_brew
   section "PHASE 2 :: REQUIRED PACKAGES"
   brew_cask_install iterm2
   brew_cask_install visual-studio-code
@@ -668,7 +680,7 @@ return_or_quit() {
 LAST_EXIT=0
 snd_boot
 boot_screen
-preflight
+check_darwin
 while true; do
   reset_run_state
   main_menu
