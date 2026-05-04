@@ -193,26 +193,35 @@ ensure_brew() {
 
   if ! command -v brew >/dev/null 2>&1; then
     work "Bootstrapping HOMEBREW.SYS"
-    printf "\n\n  ${DIM}(Homebrew installer will print here — press ENTER if it prompts you)${RESET}\n"
-    local _brew_log
+    printf "\n\n  ${DIM}(Homebrew installer output below — press ENTER if it prompts you)${RESET}\n\n"
+    local _brew_log _brew_installer
     _brew_log=$(mktemp)
-    if /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" 2>&1 | tee "$_brew_log" >/dev/null; then
+    _brew_installer=$(mktemp)
+    # Download first so a network failure produces a clear error, not a silent no-op
+    if ! curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh \
+         -o "$_brew_installer" 2>"$_brew_log"; then
+      fail_w "HOMEBREW.SYS — download failed (check network / proxy)"
+      tail -5 "$_brew_log" | sed 's/^/    /'
+      rm -f "$_brew_installer" "$_brew_log"; beep; exit 1
+    fi
+    # Run installer with output visible (user must see any ENTER prompts)
+    if bash "$_brew_installer" 2>&1 | tee "$_brew_log"; then
       _heal_brew_path || true
       if command -v brew >/dev/null 2>&1; then
         done_w "HOMEBREW.SYS LOADED"
       else
         fail_w "HOMEBREW.SYS — installed but brew still not on PATH"
         printf "  ${DIM}Try: eval \"\$(/opt/homebrew/bin/brew shellenv)\" then re-run.${RESET}\n"
-        beep; exit 1
+        rm -f "$_brew_installer" "$_brew_log"; beep; exit 1
       fi
     else
       fail_w "HOMEBREW.SYS LOAD ERROR"
       printf "  ${RED}Last 10 lines of installer output:${RESET}\n"
       tail -10 "$_brew_log" | sed 's/^/    /'
       printf "  ${DIM}Full log: %s${RESET}\n" "$_brew_log"
-      beep; exit 1
+      rm -f "$_brew_installer" "$_brew_log"; beep; exit 1
     fi
-    rm -f "$_brew_log"
+    rm -f "$_brew_installer" "$_brew_log"
   else
     ok "HOMEBREW.SYS PRESENT"
   fi
