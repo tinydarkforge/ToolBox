@@ -145,8 +145,25 @@ check_darwin() {
 # Heavy preflight: CLT + Homebrew. Runs only when an install path actually
 # needs brew. Idempotent — guarded by BREW_READY flag.
 BREW_READY=0
+_heal_brew_path() {
+  # Brew installed at standard location but not on current PATH.
+  # Happens when script runs under bash on a machine where brew is only wired
+  # into .zshrc / .zprofile (not .bash_profile).
+  command -v brew >/dev/null 2>&1 && return 0
+  local _p
+  for _p in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+    if [[ -x "$_p" ]]; then
+      eval "$("$_p" shellenv)" 2>/dev/null || true
+      return 0
+    fi
+  done
+  return 1
+}
+
 ensure_brew() {
   (( BREW_READY == 1 )) && return 0
+
+  _heal_brew_path || true   # fix PATH before any brew check below
 
   section "PHASE 1 :: SYSTEM CHECK"
   ok "MS-DARWIN $(sw_vers -productVersion) DETECTED"
@@ -176,15 +193,26 @@ ensure_brew() {
 
   if ! command -v brew >/dev/null 2>&1; then
     work "Bootstrapping HOMEBREW.SYS"
-    if /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" >/dev/null 2>&1; then
-      [[ -x /opt/homebrew/bin/brew ]] && eval "$(/opt/homebrew/bin/brew shellenv)"
-      [[ -x /usr/local/bin/brew ]]    && eval "$(/usr/local/bin/brew shellenv)"
-      done_w "HOMEBREW.SYS LOADED"
+    printf "\n\n  ${DIM}(Homebrew installer will print here — press ENTER if it prompts you)${RESET}\n"
+    local _brew_log
+    _brew_log=$(mktemp)
+    if /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" 2>&1 | tee "$_brew_log" >/dev/null; then
+      _heal_brew_path || true
+      if command -v brew >/dev/null 2>&1; then
+        done_w "HOMEBREW.SYS LOADED"
+      else
+        fail_w "HOMEBREW.SYS — installed but brew still not on PATH"
+        printf "  ${DIM}Try: eval \"\$(/opt/homebrew/bin/brew shellenv)\" then re-run.${RESET}\n"
+        beep; exit 1
+      fi
     else
       fail_w "HOMEBREW.SYS LOAD ERROR"
-      beep
-      exit 1
+      printf "  ${RED}Last 10 lines of installer output:${RESET}\n"
+      tail -10 "$_brew_log" | sed 's/^/    /'
+      printf "  ${DIM}Full log: %s${RESET}\n" "$_brew_log"
+      beep; exit 1
     fi
+    rm -f "$_brew_log"
   else
     ok "HOMEBREW.SYS PRESENT"
   fi
@@ -199,27 +227,35 @@ ensure_brew() {
 # ─── install primitives ───────────────────────────────────────────
 brew_install() {
   local pkg="$1"
+  ensure_brew
   if brew list --formula --versions "$pkg" >/dev/null 2>&1; then
     skip "$pkg"; SKIPPED+=("$pkg"); return 0
   fi
   work "$pkg"
-  if brew install "$pkg" >/dev/null 2>&1; then
-    done_w "$pkg"; INSTALLED+=("$pkg"); snd_ok
+  local _log; _log=$(mktemp)
+  if brew install "$pkg" >"$_log" 2>&1; then
+    done_w "$pkg"; INSTALLED+=("$pkg"); snd_ok; rm -f "$_log"
   else
-    fail_w "$pkg"; FAILED+=("$pkg"); beep; snd_fail
+    fail_w "$pkg"
+    grep -i 'error\|warning\|failed' "$_log" | head -5 | sed 's/^/    /'
+    FAILED+=("$pkg"); beep; snd_fail; rm -f "$_log"
   fi
 }
 
 brew_cask_install() {
   local pkg="$1"
+  ensure_brew
   if brew list --cask --versions "$pkg" >/dev/null 2>&1; then
     skip "$pkg.app"; SKIPPED+=("$pkg"); return 0
   fi
   work "$pkg.app"
-  if brew install --cask "$pkg" >/dev/null 2>&1; then
-    done_w "$pkg.app"; INSTALLED+=("$pkg"); snd_ok
+  local _log; _log=$(mktemp)
+  if brew install --cask "$pkg" >"$_log" 2>&1; then
+    done_w "$pkg.app"; INSTALLED+=("$pkg"); snd_ok; rm -f "$_log"
   else
-    fail_w "$pkg.app"; FAILED+=("$pkg"); beep; snd_fail
+    fail_w "$pkg.app"
+    grep -i 'error\|warning\|failed' "$_log" | head -5 | sed 's/^/    /'
+    FAILED+=("$pkg"); beep; snd_fail; rm -f "$_log"
   fi
 }
 
