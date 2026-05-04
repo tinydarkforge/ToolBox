@@ -291,11 +291,20 @@ install_oh_my_zsh() {
     skip "OHMYZSH.SH"; SKIPPED+=("oh-my-zsh"); return 0
   fi
   work "OHMYZSH.SH"
-  if RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" >/dev/null 2>&1; then
+  local _omz_script _omz_log
+  _omz_log=$(mktemp)
+  # Download first — $(curl ...) silently swallows network errors and runs sh -c "" → false OK
+  if ! _omz_script=$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh 2>"$_omz_log"); then
+    fail_w "OHMYZSH.SH — download failed"
+    tail -3 "$_omz_log" | sed 's/^/    /'
+    rm -f "$_omz_log"; FAILED+=("oh-my-zsh"); beep; snd_fail; return
+  fi
+  if RUNZSH=no CHSH=no sh -c "$_omz_script" >/dev/null 2>&1; then
     done_w "OHMYZSH.SH"; INSTALLED+=("oh-my-zsh"); snd_ok
   else
     fail_w "OHMYZSH.SH"; FAILED+=("oh-my-zsh"); beep; snd_fail
   fi
+  rm -f "$_omz_log"
 }
 
 install_nvm() {
@@ -479,6 +488,7 @@ run_pick_categories() {
   ask_yn "Load PRODUCTIVITY module?" n && install_productivity
   ask_yn "Load EDITORS/EXTRAS module?" n && install_editors_extras
   ask_yn "Load TINYDARKFORGE FORGE module (SecGate + Intake)?" y && install_tdf_tools
+  return 0  # ask_yn returning 1 (declined) must not propagate as a failure
 }
 
 MENU_OPTIONS=(
